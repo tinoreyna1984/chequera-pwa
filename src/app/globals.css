@@ -1,34 +1,63 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  color-scheme: light;
+
+  --surface: #fffdf8;
+  --raised: #ffffff;
+  --ink: #292524;
+  --ink-strong: #1c1917;
+  --muted: #57534e;
+  --faint: #d6d3d1;
+  --line: #e7e5e4;
+  --line-strong: #d6d3d1;
+  --accent: #92400e;
+  --accent-solid: #b45309;
+  --on-accent: #ffffff;
 }
 
-:root[data-theme="dark"] { --background: #171717; --foreground: #ededed; color-scheme: dark; }
-@media (prefers-color-scheme: dark) { :root[data-theme="system"] { --background: #171717; --foreground: #ededed; color-scheme: dark; } }
+.dark {
+  color-scheme: dark;
+
+  --surface: #171717;
+  --raised: #262626;
+  --ink: #e7e5e4;
+  --ink-strong: #f5f5f4;
+  --muted: #a8a29e;
+  --faint: #57534e;
+  --line: #292524;
+  --line-strong: #44403c;
+  --accent: #fbbf24;
+  --accent-solid: #d97706;
+  --on-accent: #ffffff;
+}
+
 :root[data-reader-size="small"] { --reader-size: 1rem; }
 :root[data-reader-size="medium"] { --reader-size: 1.125rem; }
 :root[data-reader-size="large"] { --reader-size: 1.3rem; }
 :root[data-reader-size="xlarge"] { --reader-size: 1.5rem; }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-raised: var(--raised);
+  --color-ink: var(--ink);
+  --color-ink-strong: var(--ink-strong);
+  --color-muted: var(--muted);
+  --color-faint: var(--faint);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-accent: var(--accent);
+  --color-accent-solid: var(--accent-solid);
+  --color-on-accent: var(--on-accent);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
 body {
-  background: var(--background);
-  color: var(--foreground);
+  background: var(--surface);
+  color: var(--ink);
   font-family: Arial, Helvetica, sans-serif;
 }
 

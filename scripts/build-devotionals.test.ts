@@ -10,6 +10,7 @@ import {
   parseDevotionals,
   rebuildParagraphs,
   type Devotional,
+  type DevotionalOverride,
   type LineGeometry,
 } from "./build-devotionals";
 
@@ -194,9 +195,15 @@ describe.skipIf(!hasPdftotext)("extracción integral del PDF", () => {
   beforeAll(() => {
     const { text, geometry } = extract(PDF_PATH);
     const parsed = parseDevotionals(text, geometry);
-    entries = applyOverrides(parsed.entries, {
-      "11-06": { reference: "Salmo 37:4" },
-    });
+    // Los overrides se leen del mismo archivo que usa `npm run data:build`
+    // para que la comparación con el JSON versionado sea exacta.
+    const overrides = JSON.parse(
+      readFileSync(
+        fileURLToPath(new URL("../data/overrides.json", import.meta.url)),
+        "utf8",
+      ),
+    ) as Record<string, DevotionalOverride>;
+    entries = applyOverrides(parsed.entries, overrides);
   }, 60_000);
 
   function entry(id: string): Devotional {

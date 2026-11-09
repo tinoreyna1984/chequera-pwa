@@ -26,7 +26,15 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html
       lang="es"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      suppressHydrationWarning
     >
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var mq=window.matchMedia("(prefers-color-scheme: dark)");var apply=function(){try{var s=JSON.parse(localStorage.getItem("chequera-appearance")||"{}");var t=s.theme==="dark"||s.theme==="light"?s.theme:"system";document.documentElement.classList.toggle("dark",t==="dark"||(t==="system"&&mq.matches));if(s.size)document.documentElement.dataset.readerSize=s.size}catch(e){}};apply();mq.addEventListener("change",apply)}catch(e){}})()`,
+          }}
+        />
+      </head>
       <body className="min-h-full flex flex-col">{children}</body>
     </html>
   );

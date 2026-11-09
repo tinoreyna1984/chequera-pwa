@@ -142,17 +142,17 @@ export default function Home() {
   const next = availableEntries[index + 1];
 
   return (
-    <main className="mx-auto min-h-screen max-w-2xl bg-[#fffdf8] px-5 py-8 text-stone-800 sm:px-10">
+    <main className="mx-auto min-h-screen max-w-2xl bg-surface px-5 py-8 text-ink sm:px-10">
       <InstallPrompt />
-      <nav className="mb-8 flex flex-wrap items-center justify-between gap-3 border-b border-stone-200 pb-4 text-sm" aria-label="Navegación principal">
-        <Link className="font-bold text-amber-800" href="/">Inicio</Link>
+      <nav className="mb-8 flex flex-wrap items-center justify-between gap-3 border-b border-line pb-4 text-sm" aria-label="Navegación principal">
+        <Link className="font-bold text-accent" href="/">Inicio</Link>
         <div className="flex items-center gap-3">
-          <button type="button" disabled={!previous} onClick={() => previous && selectDay(previous.id)} className="disabled:cursor-not-allowed disabled:text-stone-300">← Anterior</button>
-          <button type="button" disabled={!next} onClick={() => next && selectDay(next.id)} className="disabled:cursor-not-allowed disabled:text-stone-300">Siguiente →</button>
-          <button type="button" onClick={() => selectDay(todayId())} className="font-semibold text-amber-800">Hoy</button>
+          <button type="button" disabled={!previous} onClick={() => previous && selectDay(previous.id)} className="disabled:cursor-not-allowed disabled:text-faint">← Anterior</button>
+          <button type="button" disabled={!next} onClick={() => next && selectDay(next.id)} className="disabled:cursor-not-allowed disabled:text-faint">Siguiente →</button>
+          <button type="button" onClick={() => selectDay(todayId())} className="font-semibold text-accent">Hoy</button>
           <button type="button" onClick={() => setSettingsOpen(true)} aria-label="Configuración de notificaciones" className="text-lg">⚙</button>
         </div>
-        <Link className="text-amber-800 hover:underline" href="/about">Acerca del app</Link>
+        <Link className="text-accent hover:underline" href="/about">Acerca del app</Link>
       </nav>
 
       <div className="mb-6 flex items-center justify-between gap-3">
@@ -160,18 +160,18 @@ export default function Home() {
         <input id="day-picker" type="date" value={idToInputDate(devotional.id)} min={`${currentYear}-01-01`} max={`${currentYear}-12-31`} onChange={(event) => {
           const selected = inputDateToId(event.target.value);
           if (validId(selected)) selectDay(selected);
-        }} className="rounded border border-stone-300 bg-white px-2 py-1 text-sm" />
+        }} className="rounded border border-line-strong bg-raised px-2 py-1 text-sm" />
       </div>
 
       <header className="mb-8 text-center">
-        <p className="text-sm font-semibold uppercase tracking-[0.2em] text-amber-700">Chequera del Banco de la Fe</p>
-        <h1 className="mt-3 text-3xl font-bold text-stone-900">{formatDate(devotional)}</h1>
+        <p className="text-sm font-semibold uppercase tracking-[0.2em] text-accent">Chequera del Banco de la Fe</p>
+        <h1 className="mt-3 text-3xl font-bold text-ink-strong">{formatDate(devotional)}</h1>
       </header>
 
       <article>
-        <blockquote className="border-l-4 border-amber-500 pl-5 text-xl italic leading-relaxed text-stone-700">
+        <blockquote className="border-l-4 border-accent-solid pl-5 text-xl italic leading-relaxed text-muted">
           “{devotional.verse}”
-          <footer className="mt-3 text-base font-semibold not-italic text-amber-800">
+          <footer className="mt-3 text-base font-semibold not-italic text-accent">
             {devotional.reference}{devotional.translationNote ? ` · ${devotional.translationNote}` : ""}
           </footer>
         </blockquote>
@@ -181,29 +181,29 @@ export default function Home() {
         </section>
       </article>
 
-      <section className="mt-8 flex flex-wrap items-center justify-between gap-3 border-y border-stone-200 py-4" aria-label="Progreso de lectura">
-        <button type="button" aria-pressed={isRead} onClick={toggleRead} className="rounded border border-amber-700 px-4 py-2 text-sm font-semibold text-amber-800">
+      <section className="mt-8 flex flex-wrap items-center justify-between gap-3 border-y border-line py-4" aria-label="Progreso de lectura">
+        <button type="button" aria-pressed={isRead} onClick={toggleRead} className="rounded border border-accent-solid px-4 py-2 text-sm font-semibold text-accent">
           {isRead ? "✓ Leído" : "Marcar como leído"}
         </button>
-        <p className="text-sm text-stone-600">Progreso anual: {readCount} de {leapYear ? 366 : 365} días</p>
+        <p className="text-sm text-muted">Progreso anual: {readCount} de {leapYear ? 366 : 365} días</p>
       </section>
       <AppearanceSettings />
 
       {settingsOpen && <div className="fixed inset-0 z-10 flex items-start justify-center bg-black/30 p-5 pt-20" role="dialog" aria-modal="true" aria-labelledby="settings-title">
-        <section className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
+        <section className="w-full max-w-md rounded-xl bg-raised p-6 shadow-xl">
           <div className="flex items-center justify-between">
             <h2 id="settings-title" className="text-xl font-bold">Recordatorio diario</h2>
             <button type="button" onClick={() => setSettingsOpen(false)} aria-label="Cerrar configuración">×</button>
           </div>
-          <p className="mt-3 text-sm text-stone-600">Recibe un aviso en tu dispositivo, tanto en la web como en la PWA instalada.</p>
+          <p className="mt-3 text-sm text-muted">Recibe un aviso en tu dispositivo, tanto en la web como en la PWA instalada.</p>
           <label className="mt-5 flex items-center gap-3 font-medium">
             <input type="checkbox" checked={notificationsEnabled} onChange={(event) => void configureNotifications(event.target.checked)} />
             Activar recordatorio
           </label>
           <label className="mt-4 block text-sm font-medium" htmlFor="notification-time">Hora del recordatorio</label>
-          <input id="notification-time" type="time" step="900" value={notificationTime} onChange={(event) => updateNotificationTime(event.target.value)} className="mt-1 rounded border border-stone-300 px-2 py-1" />
-          {notificationMessage && <p className="mt-3 text-sm text-amber-800" role="status">{notificationMessage}</p>}
-          <button type="button" onClick={() => setSettingsOpen(false)} className="mt-6 rounded bg-amber-700 px-4 py-2 text-white">Guardar</button>
+          <input id="notification-time" type="time" step="900" value={notificationTime} onChange={(event) => updateNotificationTime(event.target.value)} className="mt-1 rounded border border-line-strong px-2 py-1" />
+          {notificationMessage && <p className="mt-3 text-sm text-accent" role="status">{notificationMessage}</p>}
+          <button type="button" onClick={() => setSettingsOpen(false)} className="mt-6 rounded bg-accent-solid px-4 py-2 text-on-accent">Guardar</button>
         </section>
       </div>}
     </main>
