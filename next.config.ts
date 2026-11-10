@@ -15,7 +15,17 @@ const nextConfig: NextConfig = {
       },
     },
   },
-  allowedDevOrigins:['192.168.*.*', '127.0.0.1']
+  allowedDevOrigins:['192.168.*.*', '127.0.0.1'],
+  async headers() {
+    return [
+      {
+        source: "/sw.js",
+        headers: [
+          { key: "Cache-Control", value: "no-cache, no-store, must-revalidate" },
+        ],
+      },
+    ];
+  },
 };
 
 export default nextConfig;

@@ -5,6 +5,18 @@ import { useEffect, useState } from "react";
 type Theme = "system" | "light" | "dark";
 const sizes = ["small", "medium", "large", "xlarge"] as const;
 
+// Deben coincidir literalmente con los tokens `surface` de globals.css
+// (#fffdf8 claro / #171717 oscuro); si la paleta cambia, cambian juntos.
+function setThemeColor(dark: boolean) {
+  let meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
+  if (!meta) {
+    meta = document.createElement("meta");
+    meta.name = "theme-color";
+    document.head.appendChild(meta);
+  }
+  meta.content = dark ? "#171717" : "#fffdf8";
+}
+
 export function AppearanceSettings() {
   const [theme, setTheme] = useState<Theme>("system");
   const [size, setSize] = useState<(typeof sizes)[number]>("medium");
@@ -29,6 +41,7 @@ export function AppearanceSettings() {
     const dark = theme === "dark" || (theme === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
     document.documentElement.classList.toggle("dark", dark);
     document.documentElement.dataset.readerSize = size;
+    setThemeColor(dark);
     localStorage.setItem("chequera-appearance", JSON.stringify({ theme, size }));
   }, [theme, size, loaded]);
 
