@@ -30,7 +30,7 @@
 
 - [x] 6.1 Ejecutar `npm run lint && npm test && npm run build` sin errores
 - [x] 6.2 Recorrer el flujo completo localmente: con llaves VAPID y Upstash reales en `.env.local`, activar el recordatorio con la hora del próximo cuarto de hora, disparar `curl -X POST -H "Authorization: Bearer $CRON_SECRET" http://localhost:3000/api/push/dispatch` y confirmar que aparece la notificación con el texto del día en el navegador y que al hacer clic se abre `/?dia=` correspondiente; una segunda llamada seguida no repite la notificación
-- [ ] 6.3 Recorrer en dispositivo real los scenarios de la spec `daily-reminder`: activación con permiso, entrega cerca de la hora elegida, clic que abre el día, desactivación que detiene los envíos y re-registro al reabrir (Android con la PWA instalada obligatorio; iOS 16.4+ con la PWA en la pantalla de inicio si hay dispositivo disponible)
+- [x] 6.3 Recorrer en dispositivo real los scenarios de la spec `daily-reminder`: activación con permiso, entrega cerca de la hora elegida, clic que abre el día, desactivación que detiene los envíos y re-registro al reabrir (Android con la PWA instalada obligatorio; iOS 16.4+ con la PWA en la pantalla de inicio si hay dispositivo disponible)
 
 ## Workflow follow-up
 
