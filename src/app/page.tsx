@@ -36,6 +36,122 @@ function inputDateToId(value: string): string {
   return value.slice(5);
 }
 
+const NOTIFICATIONS_KEY = "chequera-notifications";
+
+const REMINDER_STEP_MINUTES = (() => {
+  const value = Number(process.env.NEXT_PUBLIC_REMINDER_STEP_MINUTES);
+  return Number.isFinite(value) && value > 0 ? value : 900;
+})();
+
+function pushSupported(): boolean {
+  return "Notification" in window && "serviceWorker" in navigator && "PushManager" in window;
+}
+
+function urlBase64ToUint8Array(base64: string): Uint8Array<ArrayBuffer> {
+  const padding = "=".repeat((4 - (base64.length % 4)) % 4);
+  const base64Padded = (base64 + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const raw = window.atob(base64Padded);
+  const output = new Uint8Array(raw.length);
+  for (let index = 0; index < raw.length; index++) output[index] = raw.charCodeAt(index);
+  return output;
+}
+
+async function readyRegistration(): Promise<ServiceWorkerRegistration> {
+  await navigator.serviceWorker.register("/sw.js");
+  return navigator.serviceWorker.ready;
+}
+
+async function subscribeToPush(registration: ServiceWorkerRegistration): Promise<PushSubscription> {
+  const existing = await registration.pushManager.getSubscription();
+  if (existing) return existing;
+  const applicationServerKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+  if (!applicationServerKey) throw new Error("Falta NEXT_PUBLIC_VAPID_PUBLIC_KEY; ver README.md (Recordatorio diario).");
+  return registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToUint8Array(applicationServerKey) });
+}
+
+async function postRegistration(subscription: PushSubscription, time: string): Promise<void> {
+  const response = await fetch("/api/push/subscriptions", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      subscription: subscription.toJSON(),
+      time,
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    }),
+  });
+  if (!response.ok) throw new Error(`El servidor rechazó el registro (${response.status}).`);
+}
+
+async function registerSubscription(time: string): Promise<void> {
+  await postRegistration(await subscribeToPush(await readyRegistration()), time);
+}
+
+/** PATCH en segundo plano al marcar leído: no debe bloquear la UI. */
+async function notifyReadToServer(): Promise<void> {
+  try {
+    const subscription = await (await readyRegistration()).pushManager.getSubscription();
+    if (!subscription) return;
+    const response = await fetch("/api/push/subscriptions", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ subscription: { endpoint: subscription.endpoint } }),
+    });
+    if (!response.ok) console.warn(`El servidor no marcó el día como leído (${response.status})`);
+  } catch (error) {
+    console.warn("No se pudo avisar al servidor del día leído", error);
+  }
+}
+
+/** Desactivar elimina la suscripción en el servidor y en el navegador (best effort). */
+async function unsubscribeFromPush(): Promise<void> {
+  try {
+    const registration = await navigator.serviceWorker.ready;
+    const subscription = await registration.pushManager.getSubscription();
+    if (!subscription) return;
+    await fetch("/api/push/subscriptions", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ subscription: { endpoint: subscription.endpoint } }),
+    });
+    await subscription.unsubscribe();
+  } catch (error) {
+    // si el DELETE falla, al desuscribirnos el servicio de push devolverá 404/410
+    // en el próximo despacho y el servidor dará de baja el registro
+    console.warn("No se pudo eliminar la suscripción", error);
+  }
+}
+
+type SyncOutcome = "ok" | "unavailable";
+
+/**
+ * Al abrir la app: si el permiso sigue concedido, asegura que el servidor tenga
+ * la suscripción con la hora y zona actuales (creándola de nuevo si desapareció);
+ * si el permiso fue revocado, devuelve "unavailable" para apagar el estado local.
+ */
+async function syncSubscriptionOnOpen(time: string): Promise<SyncOutcome> {
+  if (!pushSupported() || Notification.permission !== "granted") return "unavailable";
+  try {
+    const registration = await readyRegistration();
+    const existing = await registration.pushManager.getSubscription();
+    if (!existing) {
+      await postRegistration(await subscribeToPush(registration), time);
+      return "ok";
+    }
+    const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const response = await fetch(`/api/push/subscriptions?endpoint=${encodeURIComponent(existing.endpoint)}`);
+    if (response.ok) {
+      const { record } = (await response.json()) as { record: { time: string; timezone: string } | null };
+      if (record && record.time === time && record.timezone === timezone) return "ok";
+    }
+    await postRegistration(existing, time);
+    return "ok";
+  } catch (error) {
+    // el permiso sigue concedido: se conserva el estado y se reintenta en la próxima apertura
+    console.warn("No se pudo sincronizar la suscripción al abrir", error);
+    return "ok";
+  }
+}
+
 export default function Home() {
   const subscribeDate = (callback: () => void) => {
     window.addEventListener("popstate", callback);
@@ -61,12 +177,36 @@ export default function Home() {
     if ("serviceWorker" in navigator) void navigator.serviceWorker.register("/sw.js");
   }, []);
 
+  // el SW pide abrir el día desde notificationclick
+  useEffect(() => {
+    if (!("serviceWorker" in navigator)) return;
+    const onMessage = (event: MessageEvent) => {
+      const data = event.data as { type?: unknown; devotionalId?: unknown } | null;
+      if (data?.type !== "OPEN_DAY" || typeof data.devotionalId !== "string" || !validId(data.devotionalId)) return;
+      window.history.pushState({}, "", `/?dia=${data.devotionalId}`);
+      window.dispatchEvent(new PopStateEvent("popstate"));
+    };
+    navigator.serviceWorker.addEventListener("message", onMessage);
+    return () => navigator.serviceWorker.removeEventListener("message", onMessage);
+  }, []);
+
   useEffect(() => {
     queueMicrotask(() => {
       try {
-        const preference = JSON.parse(window.localStorage.getItem("chequera-notifications") ?? "{}");
-        if (preference.enabled === true) setNotificationsEnabled(true);
-        if (typeof preference.time === "string") setNotificationTime(preference.time);
+        const preference = JSON.parse(window.localStorage.getItem(NOTIFICATIONS_KEY) ?? "{}") as {
+          enabled?: unknown;
+          time?: unknown;
+        };
+        const time = typeof preference.time === "string" ? preference.time : "07:00";
+        setNotificationTime(time);
+        if (preference.enabled !== true) return;
+        setNotificationsEnabled(true);
+        void syncSubscriptionOnOpen(time).then((outcome) => {
+          if (outcome === "unavailable") {
+            setNotificationsEnabled(false);
+            window.localStorage.setItem(NOTIFICATIONS_KEY, JSON.stringify({ enabled: false, time }));
+          }
+        });
       } catch { /* almacenamiento no disponible */ }
     });
   }, []);
@@ -89,8 +229,11 @@ export default function Home() {
       if (stored.has(id)) stored.delete(id); else stored.add(id);
       const next = [...stored];
       window.localStorage.setItem(key, JSON.stringify(next));
-      setIsRead(next.includes(id));
+      const justRead = next.includes(id);
+      setIsRead(justRead);
       setReadCount(next.length);
+      // al marcar leído, el servidor omite la entrega de hoy (PATCH en segundo plano)
+      if (notificationsEnabled && justRead) void notifyReadToServer();
     } catch { setNotificationMessage("No se pudo guardar el progreso en este dispositivo."); }
   }
 
@@ -103,28 +246,64 @@ export default function Home() {
     setNotificationMessage("");
     if (!enabled) {
       setNotificationsEnabled(false);
-      window.localStorage.setItem("chequera-notifications", JSON.stringify({ enabled: false, time: notificationTime }));
+      window.localStorage.setItem(NOTIFICATIONS_KEY, JSON.stringify({ enabled: false, time: notificationTime }));
+      await unsubscribeFromPush();
+      setNotificationMessage("Recordatorio desactivado: ya no se enviarán avisos.");
       return;
     }
-    if (!("Notification" in window) || !("serviceWorker" in navigator) || !("PushManager" in window)) {
+    if (!pushSupported()) {
       setNotificationMessage("Este navegador no admite recordatorios push.");
       return;
     }
     const permission = await Notification.requestPermission();
     if (permission !== "granted") {
-      setNotificationMessage("Permiso denegado. Actívalo desde la configuración del navegador para recibir recordatorios.");
+      // sin permiso no puede haber estado "activo": se queda apagado y se explica cómo reactivarlo
+      window.localStorage.setItem(NOTIFICATIONS_KEY, JSON.stringify({ enabled: false, time: notificationTime }));
       setNotificationsEnabled(false);
+      setNotificationMessage(
+        permission === "denied"
+          ? "Permiso bloqueado 🔒. Actívalo desde el candado de la barra de direcciones (o los ajustes del navegador) y vuelve a encender el recordatorio."
+          : "No se concedió el permiso; el recordatorio sigue apagado.",
+      );
+      return;
+    }
+    try {
+      await registerSubscription(notificationTime);
+    } catch (error) {
+      setNotificationsEnabled(false);
+      window.localStorage.setItem(NOTIFICATIONS_KEY, JSON.stringify({ enabled: false, time: notificationTime }));
+      setNotificationMessage(error instanceof Error ? error.message : "No se pudo registrar el recordatorio en el servidor.");
       return;
     }
     setNotificationsEnabled(true);
-    window.localStorage.setItem("chequera-notifications", JSON.stringify({ enabled: true, time: notificationTime }));
-    setNotificationMessage("Permiso concedido. La hora quedó guardada en este dispositivo.");
+    window.localStorage.setItem(NOTIFICATIONS_KEY, JSON.stringify({ enabled: true, time: notificationTime }));
+    setNotificationMessage(`Listo: recibirás el aviso cerca de las ${notificationTime} (puede variar unos minutos).`);
   }
 
-  function updateNotificationTime(value: string) {
+  async function updateNotificationTime(value: string) {
     setNotificationTime(value);
-    if (notificationsEnabled) {
-      window.localStorage.setItem("chequera-notifications", JSON.stringify({ enabled: true, time: value }));
+    if (!notificationsEnabled) return;
+    window.localStorage.setItem(NOTIFICATIONS_KEY, JSON.stringify({ enabled: true, time: value }));
+    // el input puede emitir valores incompletos mientras se escribe
+    if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(value)) return;
+    setNotificationMessage("");
+    try {
+      const registration = await navigator.serviceWorker.ready;
+      const subscription = await registration.pushManager.getSubscription();
+      if (!subscription) return;
+      const response = await fetch("/api/push/subscriptions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          subscription: subscription.toJSON(),
+          time: value,
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        }),
+      });
+      if (!response.ok) throw new Error(`El servidor rechazó la nueva hora (${response.status}).`);
+      setNotificationMessage(`Hora actualizada: la próxima entrega será cerca de las ${value}.`);
+    } catch (error) {
+      setNotificationMessage(error instanceof Error ? error.message : "No se pudo actualizar la hora en el servidor.");
     }
   }
 
@@ -195,13 +374,13 @@ export default function Home() {
             <h2 id="settings-title" className="text-xl font-bold">Recordatorio diario</h2>
             <button type="button" onClick={() => setSettingsOpen(false)} aria-label="Cerrar configuración">×</button>
           </div>
-          <p className="mt-3 text-sm text-muted">Recibe un aviso en tu dispositivo, tanto en la web como en la PWA instalada.</p>
+          <p className="mt-3 text-sm text-muted">Recibe un aviso en tu dispositivo, en la web o en la PWA instalada. Puede llegar hasta 15 minutos después de la hora elegida.</p>
           <label className="mt-5 flex items-center gap-3 font-medium">
             <input type="checkbox" checked={notificationsEnabled} onChange={(event) => void configureNotifications(event.target.checked)} />
             Activar recordatorio
           </label>
           <label className="mt-4 block text-sm font-medium" htmlFor="notification-time">Hora del recordatorio</label>
-          <input id="notification-time" type="time" step="900" value={notificationTime} onChange={(event) => updateNotificationTime(event.target.value)} className="mt-1 rounded border border-line-strong px-2 py-1" />
+          <input id="notification-time" type="time" step={REMINDER_STEP_MINUTES} value={notificationTime} onChange={(event) => void updateNotificationTime(event.target.value)} className="mt-1 rounded border border-line-strong px-2 py-1" />
           {notificationMessage && <p className="mt-3 text-sm text-accent" role="status">{notificationMessage}</p>}
           <button type="button" onClick={() => setSettingsOpen(false)} className="mt-6 rounded bg-accent-solid px-4 py-2 text-on-accent">Guardar</button>
         </section>
