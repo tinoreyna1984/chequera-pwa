@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { AppearanceSettings } from "./AppearanceSettings";
 import { InstallPrompt } from "./InstallPrompt";
+import { ShareDevotional } from "./ShareDevotional";
 import data from "../../public/data/devotionals.json";
 
 type Devotional = (typeof data.devotionals)[number];
@@ -354,6 +355,8 @@ export default function Home() {
             {devotional.reference}{devotional.translationNote ? ` · ${devotional.translationNote}` : ""}
           </footer>
         </blockquote>
+
+        <ShareDevotional entry={devotional} />
 
         <section className="mt-8 space-y-5 text-lg leading-8">
           {devotional.content.map((paragraph, paragraphIndex) => <p key={paragraphIndex}>{paragraph}</p>)}

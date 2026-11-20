@@ -13,12 +13,23 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://chequera-pwa.vercel.app"),
   title: {
     default: "Chequera del Banco de la Fe",
     template: "%s — Chequera del Banco de la Fe",
   },
   description:
     "Devocional diario de Charles H. Spurgeon: una promesa de Dios para cada día del año, con recordatorios y lectura sin conexión.",
+  openGraph: {
+    type: "website",
+    locale: "es_MX",
+    url: "https://chequera-pwa.vercel.app",
+    siteName: "Chequera del Banco de la Fe",
+    title: "Chequera del Banco de la Fe",
+    description:
+      "Devocional diario de Charles H. Spurgeon: una promesa de Dios para cada día del año, con recordatorios y lectura sin conexión.",
+    images: [{ url: "/og-image.jpg", width: 1200, height: 630, alt: "Chequera del Banco de la Fe — Devocional diario de Charles H. Spurgeon" }],
+  },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
