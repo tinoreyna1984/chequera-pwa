@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { originServerSnapshot, originSnapshot, subscribeOrigin } from "@/adapters/origin";
-import { buildShareText, devotionalDayUrl, shareUrls, type ShareableDevotional } from "@/core/share";
+import { buildShareMessage, buildShareText, devotionalDayUrl, shareUrls, type ShareableDevotional } from "@/core/share";
 
 const NOTICE_DURATION_MS = 2500;
 
@@ -42,6 +42,7 @@ export function ShareDevotional({ entry }: { entry: ShareableDevotional }) {
   }
 
   const text = buildShareText(entry, origin);
+  const message = buildShareMessage(entry, origin);
   const url = devotionalDayUrl(entry, origin);
   const urls = shareUrls(entry, origin);
 
@@ -91,7 +92,7 @@ export function ShareDevotional({ entry }: { entry: ShareableDevotional }) {
   }
 
   async function openInstagram() {
-    if (!(await copyToClipboard(text, "Copiado ✓ Pega el versículo en Instagram."))) return;
+    if (!(await copyToClipboard(message, "Copiado ✓ Pega el versículo en Instagram."))) return;
     window.open("https://www.instagram.com/", "_blank", "noopener,noreferrer");
   }
 

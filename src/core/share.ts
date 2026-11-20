@@ -13,10 +13,16 @@ export function devotionalDayUrl(entry: ShareableDevotional, origin: string): st
   return `${origin}/?dia=${entry.id}`;
 }
 
-/** Mensaje canónico: versículo, referencia (+ nota) y enlace al día. */
+/** Texto base: versículo y referencia (+ nota), sin enlace. */
 export function buildShareText(entry: ShareableDevotional, origin: string): string {
+  void origin;
   const reference = entry.translationNote ? `${entry.reference} · ${entry.translationNote}` : entry.reference;
-  return `“${entry.verse}”\n— ${reference}\n\n${devotionalDayUrl(entry, origin)}`;
+  return `“${entry.verse}”\n— ${reference}`;
+}
+
+/** Mensaje completo para destinos que reciben todo como texto. */
+export function buildShareMessage(entry: ShareableDevotional, origin: string): string {
+  return `${buildShareText(entry, origin)}\n\n${devotionalDayUrl(entry, origin)}`;
 }
 
 export interface ShareUrls {
@@ -31,12 +37,13 @@ export interface ShareUrls {
  * texto): la vista previa depende de los metadatos Open Graph.
  */
 export function shareUrls(entry: ShareableDevotional, origin: string): ShareUrls {
-  const text = buildShareText(entry, origin);
+  const text = buildShareMessage(entry, origin);
+  const baseText = buildShareText(entry, origin);
   const url = devotionalDayUrl(entry, origin);
   return {
     whatsapp: `https://wa.me/?text=${encodeURIComponent(text)}`,
     facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`,
-    x: `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`,
-    telegram: `https://t.me/share?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`,
+    x: `https://twitter.com/intent/tweet?text=${encodeURIComponent(baseText)}&url=${encodeURIComponent(url)}`,
+    telegram: `https://t.me/share?url=${encodeURIComponent(url)}&text=${encodeURIComponent(baseText)}`,
   };
 }
