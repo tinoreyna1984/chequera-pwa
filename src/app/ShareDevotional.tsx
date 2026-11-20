@@ -55,20 +55,43 @@ export function ShareDevotional({ entry }: { entry: ShareableDevotional }) {
     }
   }
 
-  async function copyToClipboard(message = "Copiado ✓") {
+  // Resaldo para contextos sin navigator.clipboard o con permiso denegado:
+  // textarea oculta + document.execCommand("copy").
+  function legacyCopy(content: string) {
     try {
-      if (!navigator.clipboard) throw new Error("portapapeles no disponible");
-      await navigator.clipboard.writeText(text);
+      const textarea = document.createElement("textarea");
+      textarea.value = content;
+      textarea.setAttribute("readonly", "");
+      textarea.style.position = "fixed";
+      textarea.style.opacity = "0";
+      document.body.appendChild(textarea);
+      textarea.select();
+      const copied = document.execCommand("copy");
+      document.body.removeChild(textarea);
+      return copied;
+    } catch {
+      return false;
+    }
+  }
+
+  async function copyToClipboard(content: string, message = "Copiado ✓") {
+    try {
+      if (navigator.clipboard) await navigator.clipboard.writeText(content);
+      else if (!legacyCopy(content)) throw new Error("portapapeles no disponible");
       showNotice(message);
       return true;
     } catch {
+      if (legacyCopy(content)) {
+        showNotice(message);
+        return true;
+      }
       showNotice("No se pudo copiar.");
       return false;
     }
   }
 
   async function openInstagram() {
-    if (!(await copyToClipboard("Copiado ✓ Pega el versículo en Instagram."))) return;
+    if (!(await copyToClipboard(text, "Copiado ✓ Pega el versículo en Instagram."))) return;
     window.open("https://www.instagram.com/", "_blank", "noopener,noreferrer");
   }
 
@@ -97,7 +120,7 @@ export function ShareDevotional({ entry }: { entry: ShareableDevotional }) {
                 <button
                   key={destination.key}
                   type="button"
-                  onClick={() => void copyToClipboard()}
+                  onClick={() => void copyToClipboard(url)}
                   className="rounded border border-line-strong bg-raised px-3 py-1.5 text-sm hover:border-accent-solid"
                 >
                   {destination.label}

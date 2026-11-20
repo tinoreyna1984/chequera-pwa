@@ -39,11 +39,11 @@ La vista diaria (`src/app/page.tsx`) es un componente cliente único que resuelv
 | X | `https://twitter.com/intent/tweet?text=<encoded>` |
 | Telegram | `https://t.me/share?url=<url>&text=<encoded>` |
 | Instagram | sin URL de compartir: `clipboard.writeText(text)` + aviso + `window.open("https://instagram.com")` |
-| Copiar | `clipboard.writeText(text)` + aviso |
+| Copiar | `clipboard.writeText(url)` (URL absoluta del día) + aviso |
 
 Todo en `target="_blank" rel="noopener noreferrer"`. El aviso "copiado ✓" reutiliza un estado `shareMessage` local con auto-ocultamiento, en el mismo patrón (no el mismo estado) que `notificationMessage`.
 
-*Fallback de portapapeles*: si `navigator.clipboard` no existe o falla (contexto no seguro), se muestra "No se pudo copiar" en el mismo aviso.
+*Fallback de portapapeles*: si `navigator.clipboard` no existe o falla (contexto no seguro, permiso denegado), se reintenta con un `textarea` oculto + `document.execCommand("copy")`; solo si ambos fallan se muestra "No se pudo copiar" en el mismo aviso.
 
 ### 4. Componente dedicado `ShareDevotional.tsx`
 Recibe `entry` como prop (sin `year`: no se usa); encapsula modo, fila y avisos. `page.tsx` solo lo coloca bajo el blockquote. Patrón consistente con `InstallPrompt.tsx` y `AppearanceSettings.tsx` (componentes hermanos en `src/app/`).
@@ -53,6 +53,11 @@ Recibe `entry` como prop (sin `year`: no se usa); encapsula modo, fila y avisos.
 - `openGraph`: `title`, `description`, `url`, `images: [{ url: "/og-image.jpg", width: 1200, height: 630 }]`, `type: "website"`, `locale: "es_MX"`.
 - El asset se compone **una sola vez** desde el retrato original (recorte de opción A: rostro a la derecha, texto a la izquierda), queda en `public/og-image.jpg` (<100 KB, JPEG q80). No hay script de generación: es un artefacto fijo.
 - `public/og-preview-mockup.jpg` es material de evaluación; se borra al completar o se conserva como referencia — decisión de implementación sin impacto en specs.
+
+### 6. "Copiar" de la fila: URL absoluta del día
+El control "Copiar" de la fila coloca en el portapapeles **solo la URL absoluta** del devocional del día (`https://…/?dia=MM-DD`), no el mensaje completo, para que el usuario pegue un enlace limpio; Instagram sí sigue copiando el mensaje completo (lo necesita para pegarlo en la publicación). El copiado tiene doble vía: `navigator.clipboard.writeText` y, si no existe o es denegado, `textarea` oculto + `document.execCommand("copy")`.
+
+*Alternativas descartadas*: (a) botón adicional "Copiar enlace" junto al principal — eliminado por decisión del usuario: un solo botón de compartir y el copiado vive en la fila; (b) "Copiar" con el mensaje completo — el usuario pidió el enlace limpio.
 
 ## Risks / Trade-offs
 

@@ -1,10 +1,10 @@
-# Spec Delta
+# devotional-sharing Specification
 
 ## Purpose
 
 Permite al usuario compartir el versículo del devocional que está leyendo, con un enlace profundo al día, a través de la hoja nativa del sistema o de destinos directos, y garantiza que los enlaces compartidos muestren una vista previa con la identidad del sitio.
 
-## ADDED Requirements
+## Requirements
 
 ### Requirement: Control de compartir en la vista diaria
 La vista del devocional SHALL mostrar un control "Compartir versículo" ubicado debajo del blockquote que contiene el versículo y antes de los párrafos de la reflexión.
@@ -36,7 +36,7 @@ Cuando el navegador ofrezca la Web Share API, el control de compartir SHALL invo
 - **THEN** la vista permanece sin cambios y no se muestra ningún error
 
 ### Requirement: Fila de destinos sin Web Share API
-Cuando el navegador no ofrezca la Web Share API, el control de compartir SHALL desplegar una fila con los destinos WhatsApp, Facebook, X, Telegram, Instagram y copiar; cada destino SHALL abrir un enlace de compartido con el mensaje o la URL del día en curso, y copiar SHALL colocar el mensaje completo en el portapapeles.
+Cuando el navegador no ofrezca la Web Share API, el control de compartir SHALL desplegar una fila con los destinos WhatsApp, Facebook, X, Telegram, Instagram y copiar; cada destino SHALL abrir un enlace de compartido con el mensaje o la URL del día en curso, y copiar SHALL colocar la URL absoluta del devocional del día en curso en el portapapeles.
 
 #### Scenario: Escritorio sin Web Share API
 - **WHEN** el navegador no soporta `navigator.share` y el usuario pulsa "Compartir versículo"
@@ -46,9 +46,13 @@ Cuando el navegador no ofrezca la Web Share API, el control de compartir SHALL d
 - **WHEN** el usuario pulsa WhatsApp en la fila de destinos
 - **THEN** se abre `wa.me` con el mensaje del versículo precargado
 
-#### Scenario: Copiar al portapapeles
+#### Scenario: Copiar el enlace del día al portapapeles
 - **WHEN** el usuario pulsa copiar en la fila de destinos
-- **THEN** el mensaje completo queda en el portapapeles y se muestra un aviso de confirmación
+- **THEN** la URL absoluta del día (`https://…/?dia=MM-DD`) queda en el portapapeles y se muestra un aviso de confirmación
+
+#### Scenario: Copiar sin API de portapapeles
+- **WHEN** el navegador no ofrece `navigator.clipboard` o el permiso de escritura es denegado y el usuario pulsa copiar en la fila de destinos
+- **THEN** la URL absoluta del día queda igualmente en el portapapeles mediante el mecanismo de respaldo y se muestra el aviso de confirmación
 
 ### Requirement: Destino de Instagram
 El destino de Instagram SHALL copiar el mensaje completo al portapapeles, mostrar un aviso de confirmación y abrir `instagram.com` para que el usuario lo pegue; esto aplica cuando no hay hoja nativa disponible.
